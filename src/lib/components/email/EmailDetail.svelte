@@ -2,7 +2,7 @@
 	import { cn } from '$lib/utils/index.js';
 	import { formatDate, getInitials, getAvatarColor } from '$lib/utils/index.js';
 	import { emailStore } from '$lib/stores/email.svelte.js';
-	import DOMPurify from 'isomorphic-dompurify';
+	import DOMPurify from 'dompurify';
 	import {
 		ArrowLeft,
 		Star,
