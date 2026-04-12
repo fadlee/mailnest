@@ -76,6 +76,16 @@ Everything deploys as a **single Cloudflare Worker**. No Docker, no VPS, no main
 - A [Cloudflare](https://cloudflare.com/) account (free)
 - A domain added to Cloudflare with Email Routing available
 
+### Enable Email Routing
+
+Before installing, make sure Email Routing is enabled for your domain:
+
+1. Open [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. Go to **Compute (Workers)** > **Email Service** > **Email Routing**
+3. Click **Onboarding domain**
+4. Select the domain you want to use
+5. Click **Done**
+
 ### Install
 
 ```bash
