@@ -45,20 +45,20 @@ Everything deploys as a **single Cloudflare Worker**. No Docker, no VPS, no main
 
 ### What can it do?
 
-| Feature | |
-|---|---|
-| Receive emails on your domain | `anything@yourdomain.com` |
-| Multiple addresses | `admin@`, `info@`, `newsletter@`, unlimited |
-| Gmail-like dashboard | 3-column layout, responsive, dark/light mode |
-| Multi-select + bulk actions | Checkboxes, select all, bulk archive/trash/delete |
-| Right-click context menu | Quick actions on any email |
-| Search | Full-text search across all emails |
-| Star, archive, trash | Organize emails like you're used to |
-| Email routing rules | Forward, reject, or drop emails by pattern |
-| Password protected | Secure login with secret key for password reset |
-| Auto-refresh | New emails appear automatically (30s polling) |
-| Attachment support | View metadata, download via R2 (optional) |
-| HTML email rendering | Sanitized with DOMPurify (XSS-safe) |
+| Feature                       |                                                   |
+| ----------------------------- | ------------------------------------------------- |
+| Receive emails on your domain | `anything@yourdomain.com`                         |
+| Multiple addresses            | `admin@`, `info@`, `newsletter@`, unlimited       |
+| Gmail-like dashboard          | 3-column layout, responsive, dark/light mode      |
+| Multi-select + bulk actions   | Checkboxes, select all, bulk archive/trash/delete |
+| Right-click context menu      | Quick actions on any email                        |
+| Search                        | Full-text search across all emails                |
+| Star, archive, trash          | Organize emails like you're used to               |
+| Email routing rules           | Forward, reject, or drop emails by pattern        |
+| Password protected            | Secure login with secret key for password reset   |
+| Auto-refresh                  | New emails appear automatically (30s polling)     |
+| Attachment support            | View metadata, download via R2 (optional)         |
+| HTML email rendering          | Sanitized with DOMPurify (XSS-safe)               |
 
 ### What can't it do?
 
@@ -89,7 +89,7 @@ Before installing, make sure Email Routing is enabled for your domain:
 ### Install
 
 ```bash
-git clone https://github.com/your-repo/mailnest.git
+git clone https://github.com/arosyihuddin/mailnest.git
 cd mailnest
 ./install.sh
 ```
@@ -146,6 +146,7 @@ After install:
 ```
 
 A single Worker handles both:
+
 - **Inbound emails** via Cloudflare Email Routing (catch-all rule)
 - **Web dashboard** via HTTP (SvelteKit app)
 
@@ -165,23 +166,23 @@ Click the address at the bottom of the sidebar to switch. Select **All Inboxes**
 
 ### Keyboard & mouse shortcuts
 
-| Action | How |
-|---|---|
-| Select email | Click on it |
-| Multi-select | Click checkboxes |
-| Select all | Checkbox in list header |
-| Quick actions | Right-click on any email |
-| Search | Type in the search bar, `X` to clear |
-| Star | Click the star icon |
+| Action        | How                                  |
+| ------------- | ------------------------------------ |
+| Select email  | Click on it                          |
+| Multi-select  | Click checkboxes                     |
+| Select all    | Checkbox in list header              |
+| Quick actions | Right-click on any email             |
+| Search        | Type in the search bar, `X` to clear |
+| Star          | Click the star icon                  |
 
 ### Folder actions
 
-| Folder | Available actions |
-|---|---|
-| **Inbox** | Archive, Trash, Star, Mark Read/Unread |
+| Folder      | Available actions                      |
+| ----------- | -------------------------------------- |
+| **Inbox**   | Archive, Trash, Star, Mark Read/Unread |
 | **Starred** | Archive, Trash, Star, Mark Read/Unread |
-| **Archive** | Move to Inbox, Trash |
-| **Trash** | Restore to Inbox, Delete Permanently |
+| **Archive** | Move to Inbox, Trash                   |
+| **Trash**   | Restore to Inbox, Delete Permanently   |
 
 ---
 
@@ -280,18 +281,18 @@ Open `http://localhost:5173`. Create a password on first visit (no secret key ne
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | SvelteKit 2 + Svelte 5 (runes) |
-| Styling | Tailwind CSS v4 |
-| UI patterns | shadcn-svelte |
-| Icons | Lucide Svelte |
-| Database | Cloudflare D1 + Drizzle ORM |
-| Storage | Cloudflare R2 (optional) |
-| Email parsing | postal-mime |
-| HTML sanitization | DOMPurify |
-| Deploy target | Cloudflare Workers |
-| Package manager | Bun |
+| Layer             | Technology                     |
+| ----------------- | ------------------------------ |
+| Framework         | SvelteKit 2 + Svelte 5 (runes) |
+| Styling           | Tailwind CSS v4                |
+| UI patterns       | shadcn-svelte                  |
+| Icons             | Lucide Svelte                  |
+| Database          | Cloudflare D1 + Drizzle ORM    |
+| Storage           | Cloudflare R2 (optional)       |
+| Email parsing     | postal-mime                    |
+| HTML sanitization | DOMPurify                      |
+| Deploy target     | Cloudflare Workers             |
+| Package manager   | Bun                            |
 
 ---
 
@@ -329,23 +330,23 @@ mailnest/
 
 ## API Reference
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/auth` | Login |
-| `PUT` | `/api/auth` | Reset password (secret key) |
-| `DELETE` | `/api/auth` | Logout |
-| `GET` | `/api/auth` | Check session |
-| `GET` | `/api/emails?folder=inbox&search=&address=` | List emails |
-| `PATCH` | `/api/emails/:id` | Update (read, star, folder) |
-| `DELETE` | `/api/emails/:id` | Permanent delete |
-| `PATCH` | `/api/emails/bulk` | Bulk update |
-| `DELETE` | `/api/emails/bulk` | Bulk delete |
-| `GET` | `/api/emails/counts?address=` | Unread counts |
-| `GET/POST` | `/api/addresses` | List / create addresses |
-| `PATCH/DELETE` | `/api/addresses/:id` | Update / delete address |
-| `GET` | `/api/attachments/:id` | Download attachment |
-| `GET/POST` | `/api/routing-rules` | List / create rules |
-| `PATCH/DELETE` | `/api/routing-rules/:id` | Update / delete rule |
+| Method         | Endpoint                                    | Description                 |
+| -------------- | ------------------------------------------- | --------------------------- |
+| `POST`         | `/api/auth`                                 | Login                       |
+| `PUT`          | `/api/auth`                                 | Reset password (secret key) |
+| `DELETE`       | `/api/auth`                                 | Logout                      |
+| `GET`          | `/api/auth`                                 | Check session               |
+| `GET`          | `/api/emails?folder=inbox&search=&address=` | List emails                 |
+| `PATCH`        | `/api/emails/:id`                           | Update (read, star, folder) |
+| `DELETE`       | `/api/emails/:id`                           | Permanent delete            |
+| `PATCH`        | `/api/emails/bulk`                          | Bulk update                 |
+| `DELETE`       | `/api/emails/bulk`                          | Bulk delete                 |
+| `GET`          | `/api/emails/counts?address=`               | Unread counts               |
+| `GET/POST`     | `/api/addresses`                            | List / create addresses     |
+| `PATCH/DELETE` | `/api/addresses/:id`                        | Update / delete address     |
+| `GET`          | `/api/attachments/:id`                      | Download attachment         |
+| `GET/POST`     | `/api/routing-rules`                        | List / create rules         |
+| `PATCH/DELETE` | `/api/routing-rules/:id`                    | Update / delete rule        |
 
 ---
 
@@ -353,15 +354,15 @@ mailnest/
 
 MailNest fits comfortably within Cloudflare's free tier:
 
-| Resource | Free Limit | Typical Usage |
-|----------|-----------|---------------|
-| Workers requests | 100K/day | Dashboard views + email processing |
-| D1 reads | 5M/day | Email queries |
-| D1 writes | 100K/day | Storing incoming emails |
-| D1 storage | 5 GB | ~50K emails with full HTML |
-| R2 storage | 10 GB | Attachments (optional) |
-| R2 reads | 10M/month | Attachment downloads |
-| Email Routing | Unlimited (catch-all) | All inbound emails |
+| Resource         | Free Limit            | Typical Usage                      |
+| ---------------- | --------------------- | ---------------------------------- |
+| Workers requests | 100K/day              | Dashboard views + email processing |
+| D1 reads         | 5M/day                | Email queries                      |
+| D1 writes        | 100K/day              | Storing incoming emails            |
+| D1 storage       | 5 GB                  | ~50K emails with full HTML         |
+| R2 storage       | 10 GB                 | Attachments (optional)             |
+| R2 reads         | 10M/month             | Attachment downloads               |
+| Email Routing    | Unlimited (catch-all) | All inbound emails                 |
 
 ---
 
