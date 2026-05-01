@@ -161,18 +161,17 @@ export async function forwardEmailToTelegram(params: {
 
 export function formatTelegramEmailMessages(email: StoredEmailForTelegram, attachmentCount: number): string[] {
 	const from = email.fromName ? `${email.fromName} <${email.fromAddress}>` : email.fromAddress;
-	const body = normalizeEmailBody(email.bodyText, email.bodyHtml);
-	const header = [
+	const body = normalizeEmailBody(email.bodyText);
+	const headerLines = [
 		'New email',
 		'',
-		`To: ${email.toAddress}`,
 		`From: ${from}`,
+		`To: ${email.toAddress}`,
 		`Subject: ${email.subject || '(No Subject)'}`,
-		`Date: ${email.date}`,
-		`Attachments: ${attachmentCount} file(s)`,
-		'',
-		'Body:'
-	].join('\n');
+		...(attachmentCount > 0 ? [`Attachments: ${attachmentCount}`] : []),
+		''
+	];
+	const header = headerLines.join('\n');
 
 	const firstPrefix = `${header}\n`;
 	const firstBodySize = Math.max(500, SAFE_CHUNK_SIZE - firstPrefix.length);
@@ -185,29 +184,8 @@ export function formatTelegramEmailMessages(email: StoredEmailForTelegram, attac
 	});
 }
 
-export function normalizeEmailBody(bodyText: string, bodyHtml: string | null): string {
-	const text = bodyText.trim();
-	if (text) return text;
-
-	const html = (bodyHtml || '').trim();
-	if (!html) return '(No text body)';
-
-	const stripped = html
-		.replace(/<style[\s\S]*?<\/style>/gi, '')
-		.replace(/<script[\s\S]*?<\/script>/gi, '')
-		.replace(/<br\s*\/?\s*>/gi, '\n')
-		.replace(/<\/p>/gi, '\n\n')
-		.replace(/<[^>]+>/g, '')
-		.replace(/&nbsp;/g, ' ')
-		.replace(/&amp;/g, '&')
-		.replace(/&lt;/g, '<')
-		.replace(/&gt;/g, '>')
-		.replace(/&quot;/g, '"')
-		.replace(/&#39;/g, "'")
-		.replace(/\n{3,}/g, '\n\n')
-		.trim();
-
-	return stripped || '(No text body)';
+export function normalizeEmailBody(bodyText: string): string {
+	return bodyText.trim().replace(/\n{3,}/g, '\n\n') || '(No text body)';
 }
 
 function splitText(text: string, firstChunkSize: number, nextChunkSize: number): string[] {
