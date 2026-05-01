@@ -271,11 +271,15 @@ R2 free tier: 10GB storage, 10M reads/month.
 # First time: set up local D1 database
 bun run dev:setup
 
+# Set or reset the local admin password
+bun run dev:password admin123
+
 # Start dev server
 bun run dev
 ```
 
-Open `http://localhost:5173`. Create a password on first visit (no secret key needed in dev).
+Open `http://localhost:5173` and log in with the password you set above.
+Run `bun run dev:password` without an argument if you prefer to enter the password securely.
 
 ---
 
