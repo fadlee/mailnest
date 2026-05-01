@@ -141,6 +141,9 @@ export async function forwardEmailToTelegram(params: {
 }): Promise<void> {
 	const settings = await loadTelegramSettings(params.db);
 	if (!settings.enabled || !settings.configured || !settings.encryptedToken || !settings.defaultChatId) {
+		console.info(
+			`[MailNest] Telegram forwarding skipped for email=${params.email.id}: enabled=${settings.enabled} configured=${settings.configured} hasToken=${Boolean(settings.encryptedToken)} hasChat=${Boolean(settings.defaultChatId)}`
+		);
 		return;
 	}
 
