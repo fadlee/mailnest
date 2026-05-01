@@ -166,7 +166,7 @@ export function formatTelegramEmailMessages(email: StoredEmailForTelegram, attac
 	const from = email.fromName ? `${email.fromName} <${email.fromAddress}>` : email.fromAddress;
 	const body = normalizeEmailBody(email.bodyText, email.bodyHtml);
 	const headerLines = [
-		'New email',
+		`New email to ${email.toAddress}`,
 		'',
 		`From: ${from}`,
 		`To: ${email.toAddress}`,

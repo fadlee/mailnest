@@ -1,5 +1,16 @@
 import { describe, expect, test } from 'bun:test';
-import { normalizeEmailBody } from './telegram.js';
+import { formatTelegramEmailMessages, normalizeEmailBody } from './telegram.js';
+
+const email = {
+	id: 'email-1',
+	fromAddress: 'sender@example.com',
+	fromName: 'Sender',
+	toAddress: 'team@example.com',
+	subject: 'Hello',
+	bodyText: 'Body text',
+	bodyHtml: null,
+	date: '2026-05-01T00:00:00.000Z'
+};
 
 describe('normalizeEmailBody', () => {
 	test('prefers plain text body and removes excess whitespace', () => {
@@ -62,5 +73,11 @@ describe('normalizeEmailBody', () => {
 		`;
 
 		expect(normalizeEmailBody('', html)).toBe('- First item\n- Second item\nFooter');
+	});
+});
+
+describe('formatTelegramEmailMessages', () => {
+	test('shows recipient email in the first line', () => {
+		expect(formatTelegramEmailMessages(email, 0)[0].startsWith('New email to team@example.com')).toBe(true);
 	});
 });
