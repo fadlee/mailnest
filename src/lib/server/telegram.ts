@@ -185,36 +185,76 @@ export function formatTelegramEmailMessages(email: StoredEmailForTelegram, attac
 }
 
 export function normalizeEmailBody(bodyText: string, bodyHtml: string | null): string {
-	const text = bodyText.trim().replace(/\n{3,}/g, '\n\n');
+	const text = cleanExtractedText(bodyText);
 	if (text) return text;
 
 	const html = (bodyHtml || '').trim();
 	if (!html) return '(No text body)';
 
-	const stripped = html
+	return htmlToReadableText(html) || '(No text body)';
+}
+
+function htmlToReadableText(html: string): string {
+	const withLinks = html.replace(
+		/<a\b[^>]*href=["']?([^"'\s>]+)["']?[^>]*>([\s\S]*?)<\/a>/gi,
+		(_match, href: string, label: string) => {
+			const text = stripInlineHtml(label);
+			const url = decodeHtmlEntities(href.trim());
+			if (!text) return url;
+			if (!url || text === url) return text;
+			return `${text} (${url})`;
+		}
+	);
+
+	const stripped = withLinks
 		.replace(/<style[\s\S]*?<\/style>/gi, '')
 		.replace(/<script[\s\S]*?<\/script>/gi, '')
 		.replace(/<!--[\s\S]*?-->/g, '')
+		.replace(/<\/?(?:h[1-6]|table|thead|tbody|tfoot)\b[^>]*>/gi, '\n\n')
 		.replace(/<br\s*\/?\s*>/gi, '\n')
-		.replace(/<\/p>/gi, '\n\n')
-		.replace(/<\/div>/gi, '\n')
-		.replace(/<\/tr>/gi, '\n')
+		.replace(/<li\b[^>]*>/gi, '\n- ')
 		.replace(/<\/li>/gi, '\n')
-		.replace(/<[^>]+>/g, '')
+		.replace(/<\/?(?:p|section|article|header|footer|blockquote)\b[^>]*>/gi, '\n\n')
+		.replace(/<\/?(?:div|tr)\b[^>]*>/gi, '\n')
+		.replace(/<\/t[dh]>/gi, ' ')
+		.replace(/<t[dh]\b[^>]*>/gi, ' ')
+		.replace(/<[^>]+>/g, '');
+
+	return cleanExtractedText(decodeHtmlEntities(stripped));
+}
+
+function stripInlineHtml(value: string): string {
+	return decodeHtmlEntities(value.replace(/<[^>]+>/g, ''))
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
+function cleanExtractedText(value: string): string {
+	const lines = value
+		.replace(/\r/g, '')
+		.split('\n')
+		.map((line) => line.replace(/[\t ]+/g, ' ').trim())
+		.filter(Boolean);
+
+	const cleaned: string[] = [];
+	for (const line of lines) {
+		if (cleaned[cleaned.length - 1] === line) continue;
+		cleaned.push(line);
+	}
+
+	return cleaned.join('\n').trim();
+}
+
+function decodeHtmlEntities(value: string): string {
+	return value
 		.replace(/&nbsp;/g, ' ')
 		.replace(/&amp;/g, '&')
 		.replace(/&lt;/g, '<')
 		.replace(/&gt;/g, '>')
 		.replace(/&quot;/g, '"')
 		.replace(/&#39;/g, "'")
-		.split('\n')
-		.map((line) => line.replace(/\s+/g, ' ').trim())
-		.filter(Boolean)
-		.join('\n')
-		.replace(/\n{3,}/g, '\n\n')
-		.trim();
-
-	return stripped || '(No text body)';
+		.replace(/&#(\d+);/g, (_match, code: string) => String.fromCodePoint(Number(code)))
+		.replace(/&#x([\da-f]+);/gi, (_match, code: string) => String.fromCodePoint(Number.parseInt(code, 16)));
 }
 
 function splitText(text: string, firstChunkSize: number, nextChunkSize: number): string[] {
