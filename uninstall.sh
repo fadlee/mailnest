@@ -47,7 +47,7 @@ print_step 1 "Reading configuration..."
 
 MAIL_DOMAIN=""
 if [[ -f "wrangler.toml" ]]; then
-    MAIL_DOMAIN=$(grep -oP 'MAIL_DOMAIN\s*=\s*"\K[^"]+' wrangler.toml 2>/dev/null || true)
+    MAIL_DOMAIN=$(sed -nE 's/.*MAIL_DOMAIN[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' wrangler.toml 2>/dev/null || true)
 fi
 
 if [[ -z "$MAIL_DOMAIN" || "$MAIL_DOMAIN" == "example.com" ]]; then
@@ -72,7 +72,7 @@ if ! echo "$WHOAMI_OUTPUT" | grep -q "You are logged in"; then
     WHOAMI_OUTPUT=$(bunx wrangler whoami 2>&1 || true)
 fi
 
-ACCOUNT_ID=$(echo "$WHOAMI_OUTPUT" | grep -oP '[a-f0-9]{32}' | head -1)
+ACCOUNT_ID=$(echo "$WHOAMI_OUTPUT" | grep -Eo '[a-f0-9]{32}' | head -1)
 if [[ -z "$ACCOUNT_ID" ]]; then
     print_err "Could not determine Account ID."
     exit 1
@@ -84,7 +84,7 @@ for CONFIG_PATH in \
     "${HOME}/.config/.wrangler/config/default.toml" \
     "${HOME}/.wrangler/config/default.toml"; do
     if [[ -f "$CONFIG_PATH" ]]; then
-        CF_API_TOKEN=$(grep -oP 'oauth_token\s*=\s*"\K[^"]+' "$CONFIG_PATH" 2>/dev/null || true)
+        CF_API_TOKEN=$(sed -nE 's/.*oauth_token[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$CONFIG_PATH" 2>/dev/null || true)
         if [[ -n "$CF_API_TOKEN" ]]; then break; fi
     fi
 done
@@ -97,7 +97,7 @@ print_ok "API token acquired"
 ZONE_RESPONSE=$(curl -s "https://api.cloudflare.com/client/v4/zones?name=${MAIL_DOMAIN}" \
     -H "Authorization: Bearer ${CF_API_TOKEN}" \
     -H "Content-Type: application/json")
-ZONE_ID=$(echo "$ZONE_RESPONSE" | grep -oP '"id"\s*:\s*"\K[a-f0-9]+' | head -1 || true)
+ZONE_ID=$(echo "$ZONE_RESPONSE" | sed -nE 's/.*"id"[[:space:]]*:[[:space:]]*"([a-f0-9]+)".*/\1/p' | head -1 || true)
 
 if [[ -n "$ZONE_ID" ]]; then
     print_ok "Zone ID: ${ZONE_ID}"
@@ -121,7 +121,7 @@ if [[ -n "$ZONE_ID" ]]; then
             "enabled": false,
             "name": "Catch-all (disabled)"
         }')
-    if echo "$CATCHALL_RESPONSE" | grep -qP '"success"\s*:\s*true'; then
+    if echo "$CATCHALL_RESPONSE" | grep -Eq '"success"[[:space:]]*:[[:space:]]*true'; then
         print_ok "Catch-all rule disabled"
     else
         print_warn "Could not disable catch-all rule"

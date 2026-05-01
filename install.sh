@@ -20,6 +20,17 @@ print_warn() { echo -e "  ${YELLOW}⚠${NC} $1"; }
 print_err()  { echo -e "  ${RED}✗${NC} $1"; }
 print_info() { echo -e "  ${CYAN}→${NC} $1"; }
 
+sed_inplace() {
+    local expression="$1"
+    local file="$2"
+
+    if sed --version >/dev/null 2>&1; then
+        sed -i "$expression" "$file"
+    else
+        sed -i '' "$expression" "$file"
+    fi
+}
+
 TOTAL_STEPS=13
 
 echo -e "${BOLD}"
@@ -68,10 +79,10 @@ EXISTING_SECRET=""
 
 if [[ -f "wrangler.toml" ]]; then
     # Read existing values
-    EXISTING_DOMAIN=$(grep -oP 'MAIL_DOMAIN\s*=\s*"\K[^"]+' wrangler.toml 2>/dev/null || true)
-    EXISTING_DASHBOARD=$(grep -oP 'pattern\s*=\s*"\K[^"]+' wrangler.toml 2>/dev/null || true)
-    EXISTING_DB_ID=$(grep -oP 'database_id\s*=\s*"\K[^"]+' wrangler.toml 2>/dev/null || true)
-    EXISTING_SECRET=$(grep -oP 'INTERNAL_SECRET\s*=\s*"\K[^"]+' wrangler.toml 2>/dev/null || true)
+    EXISTING_DOMAIN=$(sed -nE 's/.*MAIL_DOMAIN[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' wrangler.toml 2>/dev/null || true)
+    EXISTING_DASHBOARD=$(sed -nE 's/.*pattern[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' wrangler.toml 2>/dev/null || true)
+    EXISTING_DB_ID=$(sed -nE 's/.*database_id[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' wrangler.toml 2>/dev/null || true)
+    EXISTING_SECRET=$(sed -nE 's/.*INTERNAL_SECRET[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' wrangler.toml 2>/dev/null || true)
 
     # Check if config is valid (not placeholder)
     if [[ -n "$EXISTING_DOMAIN" && "$EXISTING_DOMAIN" != "example.com" && -n "$EXISTING_DB_ID" && "$EXISTING_DB_ID" != "YOUR_D1_DATABASE_ID" ]]; then
@@ -172,7 +183,7 @@ if echo "$WHOAMI_OUTPUT" | grep -q "not authenticated" || ! echo "$WHOAMI_OUTPUT
 fi
 print_ok "Logged in to Cloudflare"
 
-ACCOUNT_ID=$(echo "$WHOAMI_OUTPUT" | grep -oP '[a-f0-9]{32}' | head -1)
+ACCOUNT_ID=$(echo "$WHOAMI_OUTPUT" | grep -Eo '[a-f0-9]{32}' | head -1)
 if [[ -z "$ACCOUNT_ID" ]]; then
     print_err "Could not determine Account ID."
     exit 1
@@ -184,7 +195,7 @@ for CONFIG_PATH in \
     "${HOME}/.config/.wrangler/config/default.toml" \
     "${HOME}/.wrangler/config/default.toml"; do
     if [[ -f "$CONFIG_PATH" ]]; then
-        CF_API_TOKEN=$(grep -oP 'oauth_token\s*=\s*"\K[^"]+' "$CONFIG_PATH" 2>/dev/null || true)
+        CF_API_TOKEN=$(sed -nE 's/.*oauth_token[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$CONFIG_PATH" 2>/dev/null || true)
         if [[ -n "$CF_API_TOKEN" ]]; then break; fi
     fi
 done
@@ -203,7 +214,7 @@ print_info "Looking up Zone ID for ${MAIL_DOMAIN}..."
 ZONE_RESPONSE=$(curl -s "https://api.cloudflare.com/client/v4/zones?name=${MAIL_DOMAIN}" \
     -H "Authorization: Bearer ${CF_API_TOKEN}" \
     -H "Content-Type: application/json")
-ZONE_ID=$(echo "$ZONE_RESPONSE" | grep -oP '"id"\s*:\s*"\K[a-f0-9]+' | head -1)
+ZONE_ID=$(echo "$ZONE_RESPONSE" | sed -nE 's/.*"id"[[:space:]]*:[[:space:]]*"([a-f0-9]+)".*/\1/p' | head -1)
 
 if [[ -z "$ZONE_ID" ]]; then
     print_err "Could not find Zone ID for ${MAIL_DOMAIN}."
@@ -223,10 +234,10 @@ else
     EXISTING_DB=$(bunx wrangler d1 list 2>&1 | grep "mailnest-db" || true)
     if [[ -n "$EXISTING_DB" ]]; then
         print_warn "Database 'mailnest-db' already exists."
-        DB_ID=$(echo "$EXISTING_DB" | grep -oP '[a-f0-9-]{36}' | head -1)
+        DB_ID=$(echo "$EXISTING_DB" | grep -Eo '[a-f0-9-]{36}' | head -1)
     else
         D1_OUTPUT=$(bunx wrangler d1 create mailnest-db 2>&1)
-        DB_ID=$(echo "$D1_OUTPUT" | grep -oP 'database_id\s*=\s*"\K[^"]+' || echo "$D1_OUTPUT" | grep -oP '[a-f0-9-]{36}' | head -1)
+        DB_ID=$(echo "$D1_OUTPUT" | sed -nE 's/.*database_id[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' || echo "$D1_OUTPUT" | grep -Eo '[a-f0-9-]{36}' | head -1)
     fi
 
     if [[ -z "$DB_ID" ]]; then
@@ -249,10 +260,10 @@ if [[ "$REDEPLOY" == false ]]; then
 
     INTERNAL_SECRET=$(openssl rand -hex 32 2>/dev/null || head -c 64 /dev/urandom | od -An -tx1 | tr -d ' \n')
 
-    sed -i "s|MAIL_DOMAIN = \"example.com\"|MAIL_DOMAIN = \"${MAIL_DOMAIN}\"|g" wrangler.toml
-    sed -i "s|INTERNAL_SECRET = \"GENERATE_ME\"|INTERNAL_SECRET = \"${INTERNAL_SECRET}\"|g" wrangler.toml
-    sed -i "s|database_id = \"YOUR_D1_DATABASE_ID\"|database_id = \"${DB_ID}\"|g" wrangler.toml
-    sed -i "s|pattern = \"DASHBOARD_DOMAIN\"|pattern = \"${DASHBOARD_DOMAIN}\"|g" wrangler.toml
+    sed_inplace "s|MAIL_DOMAIN = \"example.com\"|MAIL_DOMAIN = \"${MAIL_DOMAIN}\"|g" wrangler.toml
+    sed_inplace "s|INTERNAL_SECRET = \"GENERATE_ME\"|INTERNAL_SECRET = \"${INTERNAL_SECRET}\"|g" wrangler.toml
+    sed_inplace "s|database_id = \"YOUR_D1_DATABASE_ID\"|database_id = \"${DB_ID}\"|g" wrangler.toml
+    sed_inplace "s|pattern = \"DASHBOARD_DOMAIN\"|pattern = \"${DASHBOARD_DOMAIN}\"|g" wrangler.toml
     print_ok "wrangler.toml configured"
 else
     print_ok "wrangler.toml unchanged (re-deploy)"
@@ -324,7 +335,7 @@ CATCHALL_RESPONSE=$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$
         \"enabled\": true,
         \"name\": \"MailNest catch-all\"
     }")
-if echo "$CATCHALL_RESPONSE" | grep -qP '"success"\s*:\s*true'; then
+if echo "$CATCHALL_RESPONSE" | grep -Eq '"success"[[:space:]]*:[[:space:]]*true'; then
     print_ok "Catch-all: *@${MAIL_DOMAIN} → mailnest"
 else
     print_warn "Could not set catch-all. Set manually: Cloudflare Dashboard → Email → Email Routing → Catch-all → Worker → mailnest"
