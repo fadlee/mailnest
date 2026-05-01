@@ -194,6 +194,7 @@ export function normalizeEmailBody(bodyText: string, bodyHtml: string | null): s
 	const stripped = html
 		.replace(/<style[\s\S]*?<\/style>/gi, '')
 		.replace(/<script[\s\S]*?<\/script>/gi, '')
+		.replace(/<!--[\s\S]*?-->/g, '')
 		.replace(/<br\s*\/?\s*>/gi, '\n')
 		.replace(/<\/p>/gi, '\n\n')
 		.replace(/<\/div>/gi, '\n')
@@ -206,6 +207,10 @@ export function normalizeEmailBody(bodyText: string, bodyHtml: string | null): s
 		.replace(/&gt;/g, '>')
 		.replace(/&quot;/g, '"')
 		.replace(/&#39;/g, "'")
+		.split('\n')
+		.map((line) => line.replace(/\s+/g, ' ').trim())
+		.filter(Boolean)
+		.join('\n')
 		.replace(/\n{3,}/g, '\n\n')
 		.trim();
 
