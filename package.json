@@ -8,6 +8,7 @@
     "dev": "vite dev",
     "dev:setup": "bunx wrangler d1 execute mailnest-db --local --file=./drizzle/migrations/0000_init.sql && echo '✓ Local DB ready. Run: bun run dev'",
     "build": "vite build && node ./scripts/postbuild-email-handler.mjs",
+    "deploy": "bun run build && bunx wrangler deploy",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "dev:password": "./reset-password-local.sh"
