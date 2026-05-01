@@ -11,6 +11,7 @@
     "deploy": "bun run build && bunx wrangler deploy",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "bun test",
     "dev:password": "./reset-password-local.sh"
   },
   "dependencies": {
