@@ -19,6 +19,52 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 	return res.json() as Promise<T>;
 }
 
+export interface TelegramSettings {
+	enabled: boolean;
+	configured: boolean;
+	botUsername: string | null;
+	botTokenPreview: string | null;
+	defaultChatId: string | null;
+}
+
+export interface TelegramSettingsInput {
+	enabled: boolean;
+	botToken?: string;
+	defaultChatId: string;
+}
+
+export interface TelegramChatOption {
+	id: string;
+	type: string;
+	title: string;
+	username: string | null;
+}
+
+export async function fetchTelegramSettings() {
+	return request<TelegramSettings>('/settings/telegram');
+}
+
+export async function saveTelegramSettings(data: TelegramSettingsInput) {
+	return request<TelegramSettings>('/settings/telegram', {
+		method: 'POST',
+		body: JSON.stringify(data)
+	});
+}
+
+export async function sendTelegramTestMessage(chatId?: string) {
+	return request<{ success: boolean }>('/settings/telegram/test', {
+		method: 'POST',
+		body: JSON.stringify({ chatId })
+	});
+}
+
+export async function fetchTelegramChats(botToken?: string) {
+	return request<{ chats: TelegramChatOption[] }>('/settings/telegram/chats', {
+		method: 'POST',
+		body: JSON.stringify({ botToken })
+	});
+}
+
 // Emails
 export async function fetchEmails(
 	folder: string = 'inbox',

@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
 import { createDb, schema } from '$lib/server/db/index.js';
+import { forwardEmailToTelegram } from '$lib/server/telegram.js';
 import { eq } from 'drizzle-orm';
 import PostalMime from 'postal-mime';
 
@@ -95,6 +96,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 				updatedAt: now
 			});
 
+		const attachmentCount = parsed?.attachments?.length || 0;
+
 		// Store attachments
 		if (parsed?.attachments && parsed.attachments.length > 0) {
 			for (const attachment of parsed.attachments) {
@@ -130,8 +133,24 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			}
 		}
 
+		await forwardEmailToTelegram({
+			db,
+			env: platform.env as unknown as Record<string, unknown>,
+			email: {
+				id: emailId,
+				fromAddress,
+				fromName,
+				toAddress: body.recipientEmail,
+				subject,
+				bodyText,
+				bodyHtml,
+				date
+			},
+			attachmentCount
+		});
+
 		console.log(
-			`[MailNest] Email stored: ${emailId} for=${body.recipientEmail} from=${fromAddress} subject="${subject}" attachments=${parsed?.attachments?.length || 0}`
+			`[MailNest] Email stored: ${emailId} for=${body.recipientEmail} from=${fromAddress} subject="${subject}" attachments=${attachmentCount}`
 		);
 
 		return json({ success: true, emailId });

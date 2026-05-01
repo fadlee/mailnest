@@ -14,7 +14,8 @@
 		Save,
 		AtSign,
 		UserPlus,
-		Crown
+		Crown,
+		Send
 	} from 'lucide-svelte';
 	import { cn } from '$lib/utils/index.js';
 	import * as api from '$lib/api.js';
@@ -27,6 +28,17 @@
 	let showAddAddress = $state(false);
 	let addressError = $state('');
 	let newAddress = $state({ username: '', displayName: '', role: 'member' });
+
+	// --- Telegram Forwarding ---
+	let telegramLoading = $state(false);
+	let telegramSaving = $state(false);
+	let telegramTesting = $state(false);
+	let telegramChatsLoading = $state(false);
+	let telegramError = $state('');
+	let telegramSuccess = $state('');
+	let telegramSettings = $state<api.TelegramSettings | null>(null);
+	let telegramChats = $state<api.TelegramChatOption[]>([]);
+	let telegramForm = $state({ enabled: false, botToken: '', defaultChatId: '' });
 
 	// --- Routing Rules ---
 	interface Rule {
@@ -53,7 +65,7 @@
 	});
 
 	onMount(async () => {
-		await Promise.all([loadAddresses(), loadRules()]);
+		await Promise.all([loadAddresses(), loadRules(), loadTelegramSettings()]);
 	});
 
 	// --- Address functions ---
@@ -68,6 +80,80 @@
 		} finally {
 			addressLoading = false;
 		}
+	}
+
+	async function loadTelegramSettings() {
+		telegramLoading = true;
+		telegramError = '';
+		try {
+			telegramSettings = await api.fetchTelegramSettings();
+			telegramForm = {
+				enabled: telegramSettings.enabled,
+				botToken: '',
+				defaultChatId: telegramSettings.defaultChatId || ''
+			};
+		} catch (err) {
+			telegramError = err instanceof Error ? err.message : 'Failed to load Telegram settings';
+		} finally {
+			telegramLoading = false;
+		}
+	}
+
+	async function saveTelegramForwarding() {
+		telegramSaving = true;
+		telegramError = '';
+		telegramSuccess = '';
+		try {
+			telegramSettings = await api.saveTelegramSettings({
+				enabled: telegramForm.enabled,
+				botToken: telegramForm.botToken || undefined,
+				defaultChatId: telegramForm.defaultChatId
+			});
+			telegramForm.botToken = '';
+			telegramForm.defaultChatId = telegramSettings.defaultChatId || '';
+			telegramSuccess = 'Telegram settings saved.';
+		} catch (err) {
+			telegramError = err instanceof Error ? err.message : 'Failed to save Telegram settings';
+		} finally {
+			telegramSaving = false;
+		}
+	}
+
+	async function testTelegramForwarding() {
+		telegramTesting = true;
+		telegramError = '';
+		telegramSuccess = '';
+		try {
+			await api.sendTelegramTestMessage(telegramForm.defaultChatId || undefined);
+			telegramSuccess = 'Test message sent.';
+		} catch (err) {
+			telegramError = err instanceof Error ? err.message : 'Failed to send test message';
+		} finally {
+			telegramTesting = false;
+		}
+	}
+
+	async function getTelegramChats() {
+		telegramChatsLoading = true;
+		telegramError = '';
+		telegramSuccess = '';
+		telegramChats = [];
+		try {
+			const result = await api.fetchTelegramChats(telegramForm.botToken || undefined);
+			telegramChats = result.chats;
+			if (telegramChats.length === 0) {
+				telegramError = 'No chats found. Send a message to the bot or add it to a group, then try again.';
+			}
+		} catch (err) {
+			telegramError = err instanceof Error ? err.message : 'Failed to get Telegram chats';
+		} finally {
+			telegramChatsLoading = false;
+		}
+	}
+
+	function useTelegramChat(chat: api.TelegramChatOption) {
+		telegramForm.defaultChatId = chat.id;
+		telegramSuccess = `Selected ${chat.title}.`;
 	}
 
 	async function addAddress() {
@@ -304,6 +390,127 @@
 								</button>
 							</div>
 						{/each}
+					{/if}
+				</div>
+			</section>
+
+			<!-- ==================== TELEGRAM FORWARDING ==================== -->
+			<section>
+				<h2 class="mb-4 flex items-center gap-2 text-base font-semibold text-foreground">
+					<Send class="h-5 w-5" />
+					Telegram Forwarding
+				</h2>
+				<div class="rounded-lg border border-border bg-card p-4">
+					{#if telegramLoading}
+						<p class="text-sm text-muted-foreground">Loading Telegram settings...</p>
+					{:else}
+						<div class="mb-4 flex items-center justify-between gap-4">
+							<div>
+								<p class="font-medium text-card-foreground">Forward all incoming emails</p>
+								<p class="text-sm text-muted-foreground">
+									Emails are still stored in MailNest. When enabled, the full message body is also sent to Telegram.
+								</p>
+							</div>
+							<button
+								class="text-foreground"
+								onclick={() => (telegramForm.enabled = !telegramForm.enabled)}
+								title={telegramForm.enabled ? 'Disable Telegram forwarding' : 'Enable Telegram forwarding'}
+							>
+								{#if telegramForm.enabled}
+									<ToggleRight class="h-8 w-8 text-primary" />
+								{:else}
+									<ToggleLeft class="h-8 w-8 text-muted-foreground" />
+								{/if}
+							</button>
+						</div>
+
+						<div>
+							<label for="telegram-token" class="mb-1 block text-sm font-medium text-foreground">Bot Token</label>
+							<input
+								id="telegram-token"
+								type="password"
+								placeholder={telegramSettings?.configured ? 'Leave blank to keep existing token' : '123456:ABC...'}
+								class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+								bind:value={telegramForm.botToken}
+							/>
+							{#if telegramSettings?.botTokenPreview}
+								<p class="mt-1 text-xs text-muted-foreground">Configured: {telegramSettings.botTokenPreview}</p>
+							{/if}
+						</div>
+
+						{#if telegramForm.botToken || telegramSettings?.botTokenPreview}
+							<div class="mt-3 space-y-3 rounded-md border border-border bg-background p-3">
+								<div class="flex flex-wrap items-end gap-2">
+									<div class="min-w-56 flex-1">
+										<label for="telegram-chat" class="mb-1 block text-sm font-medium text-foreground">Default Chat ID</label>
+										<input
+											id="telegram-chat"
+											type="text"
+											placeholder="Click Get Chat ID"
+											class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+											bind:value={telegramForm.defaultChatId}
+										/>
+									</div>
+									<button
+										class="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-60"
+										disabled={telegramChatsLoading}
+										onclick={getTelegramChats}
+									>
+										{telegramChatsLoading ? 'Loading...' : 'Get Chat ID'}
+									</button>
+								</div>
+								<p class="text-xs text-muted-foreground">Send a message to the bot, or add it to a group, then click Get Chat ID.</p>
+
+								{#if telegramChats.length > 0}
+									<div class="space-y-2">
+										{#each telegramChats as chat (chat.id)}
+											<button
+												class="flex w-full items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-left text-sm hover:bg-accent"
+												onclick={() => useTelegramChat(chat)}
+											>
+												<span>
+													<span class="font-medium text-foreground">{chat.title}</span>
+													<span class="ml-2 text-xs text-muted-foreground">{chat.type}</span>
+												</span>
+												<code class="text-xs text-muted-foreground">{chat.id}</code>
+											</button>
+										{/each}
+									</div>
+								{/if}
+							</div>
+						{/if}
+
+						<div class="mt-3 rounded-md bg-muted p-3 text-xs text-muted-foreground">
+							Create a bot with @BotFather and paste the token here. The Chat ID field appears after a token is entered or configured.
+							{#if telegramSettings?.botUsername}
+								<br />Connected bot: <span class="font-medium text-foreground">@{telegramSettings.botUsername}</span>
+							{/if}
+						</div>
+
+						{#if telegramError}
+							<p class="mt-3 text-sm text-destructive">{telegramError}</p>
+						{/if}
+						{#if telegramSuccess}
+							<p class="mt-3 text-sm text-green-600 dark:text-green-400">{telegramSuccess}</p>
+						{/if}
+
+						<div class="mt-4 flex flex-wrap gap-2">
+							<button
+								class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+								disabled={telegramSaving}
+								onclick={saveTelegramForwarding}
+							>
+								<Save class="h-4 w-4" />
+								{telegramSaving ? 'Saving...' : 'Save Telegram Settings'}
+							</button>
+							<button
+								class="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-60"
+								disabled={telegramTesting || !telegramForm.defaultChatId}
+								onclick={testTelegramForwarding}
+							>
+								{telegramTesting ? 'Sending...' : 'Send Test Message'}
+							</button>
+						</div>
 					{/if}
 				</div>
 			</section>
