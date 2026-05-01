@@ -38,7 +38,7 @@
 	let telegramSuccess = $state('');
 	let telegramSettings = $state<api.TelegramSettings | null>(null);
 	let telegramChats = $state<api.TelegramChatOption[]>([]);
-	let telegramForm = $state({ enabled: false, botToken: '', defaultChatId: '' });
+	let telegramForm = $state({ enabled: false, includeDetailLink: false, botToken: '', defaultChatId: '' });
 
 	// --- Routing Rules ---
 	interface Rule {
@@ -89,6 +89,7 @@
 			telegramSettings = await api.fetchTelegramSettings();
 			telegramForm = {
 				enabled: telegramSettings.enabled,
+				includeDetailLink: telegramSettings.includeDetailLink,
 				botToken: '',
 				defaultChatId: telegramSettings.defaultChatId || ''
 			};
@@ -106,6 +107,7 @@
 		try {
 			telegramSettings = await api.saveTelegramSettings({
 				enabled: telegramForm.enabled,
+				includeDetailLink: telegramForm.includeDetailLink,
 				botToken: telegramForm.botToken || undefined,
 				defaultChatId: telegramForm.defaultChatId
 			});
@@ -417,6 +419,26 @@
 								title={telegramForm.enabled ? 'Disable Telegram forwarding' : 'Enable Telegram forwarding'}
 							>
 								{#if telegramForm.enabled}
+									<ToggleRight class="h-8 w-8 text-primary" />
+								{:else}
+									<ToggleLeft class="h-8 w-8 text-muted-foreground" />
+								{/if}
+							</button>
+						</div>
+
+						<div class="mb-4 flex items-center justify-between gap-4 rounded-md border border-border bg-background p-3">
+							<div>
+								<p class="font-medium text-card-foreground">Forward detail link</p>
+								<p class="text-sm text-muted-foreground">
+									Include a MailNest email detail link in each Telegram message when the app URL is configured.
+								</p>
+							</div>
+							<button
+								class="text-foreground"
+								onclick={() => (telegramForm.includeDetailLink = !telegramForm.includeDetailLink)}
+								title={telegramForm.includeDetailLink ? 'Disable detail links' : 'Enable detail links'}
+							>
+								{#if telegramForm.includeDetailLink}
 									<ToggleRight class="h-8 w-8 text-primary" />
 								{:else}
 									<ToggleLeft class="h-8 w-8 text-muted-foreground" />

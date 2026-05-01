@@ -21,6 +21,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export interface TelegramSettings {
 	enabled: boolean;
+	includeDetailLink: boolean;
 	configured: boolean;
 	botUsername: string | null;
 	botTokenPreview: string | null;
@@ -29,6 +30,7 @@ export interface TelegramSettings {
 
 export interface TelegramSettingsInput {
 	enabled: boolean;
+	includeDetailLink: boolean;
 	botToken?: string;
 	defaultChatId: string;
 }

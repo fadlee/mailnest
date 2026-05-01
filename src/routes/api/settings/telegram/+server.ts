@@ -27,12 +27,14 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	const db = createDb(platform.env.DB);
 	const body = (await request.json()) as {
 		enabled?: boolean;
+		includeDetailLink?: boolean;
 		botToken?: string;
 		defaultChatId?: string;
 	};
 
 	const updates: Record<string, string> = {
 		telegram_enabled: body.enabled ? 'true' : 'false',
+		telegram_include_detail_link: body.includeDetailLink ? 'true' : 'false',
 		telegram_default_chat_id: (body.defaultChatId || '').trim()
 	};
 

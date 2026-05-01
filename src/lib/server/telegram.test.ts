@@ -80,4 +80,11 @@ describe('formatTelegramEmailMessages', () => {
 	test('shows recipient email in the first line', () => {
 		expect(formatTelegramEmailMessages(email, 0)[0].startsWith('New email to team@example.com')).toBe(true);
 	});
+
+	test('includes detail link only when provided', () => {
+		expect(formatTelegramEmailMessages(email, 0)[0]).not.toContain('Detail:');
+		expect(formatTelegramEmailMessages(email, 0, 'https://mail.example.com/?email=email-1')[0]).toContain(
+			'Detail: https://mail.example.com/?email=email-1'
+		);
+	});
 });

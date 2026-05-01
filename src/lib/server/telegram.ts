@@ -19,6 +19,7 @@ export interface StoredEmailForTelegram {
 
 export interface TelegramConfig {
 	enabled: boolean;
+	includeDetailLink: boolean;
 	configured: boolean;
 	botUsername: string | null;
 	botTokenPreview: string | null;
@@ -63,6 +64,7 @@ const SAFE_CHUNK_SIZE = 3900;
 
 const SETTING_KEYS = [
 	'telegram_enabled',
+	'telegram_include_detail_link',
 	'telegram_bot_token_encrypted',
 	'telegram_bot_token_preview',
 	'telegram_bot_username',
@@ -73,6 +75,7 @@ export async function loadTelegramConfig(db: Db): Promise<TelegramConfig> {
 	const settings = await loadTelegramSettings(db);
 	return {
 		enabled: settings.enabled,
+		includeDetailLink: settings.includeDetailLink,
 		configured: settings.configured,
 		botUsername: settings.botUsername,
 		botTokenPreview: settings.botTokenPreview,
@@ -87,6 +90,7 @@ async function loadTelegramSettings(db: Db): Promise<TelegramSettings> {
 
 	return {
 		enabled: settings.telegram_enabled === 'true',
+		includeDetailLink: settings.telegram_include_detail_link === 'true',
 		configured: Boolean(encryptedToken && defaultChatId),
 		encryptedToken,
 		botUsername: settings.telegram_bot_username || null,
@@ -150,7 +154,8 @@ export async function forwardEmailToTelegram(params: {
 	try {
 		const encryptionKey = getEnvString(params.env, 'ENCRYPTION_KEY');
 		const token = await decryptSecret(settings.encryptedToken, encryptionKey);
-		const chunks = formatTelegramEmailMessages(params.email, params.attachmentCount);
+		const detailUrl = settings.includeDetailLink ? getEmailDetailUrl(params.env, params.email.id) : null;
+		const chunks = formatTelegramEmailMessages(params.email, params.attachmentCount, detailUrl);
 
 		for (const chunk of chunks) {
 			await sendTelegramMessage(token, settings.defaultChatId, chunk);
@@ -162,7 +167,11 @@ export async function forwardEmailToTelegram(params: {
 	}
 }
 
-export function formatTelegramEmailMessages(email: StoredEmailForTelegram, attachmentCount: number): string[] {
+export function formatTelegramEmailMessages(
+	email: StoredEmailForTelegram,
+	attachmentCount: number,
+	detailUrl: string | null = null
+): string[] {
 	const from = email.fromName ? `${email.fromName} <${email.fromAddress}>` : email.fromAddress;
 	const body = normalizeEmailBody(email.bodyText, email.bodyHtml);
 	const headerLines = [
@@ -172,6 +181,7 @@ export function formatTelegramEmailMessages(email: StoredEmailForTelegram, attac
 		`To: ${email.toAddress}`,
 		`Subject: ${email.subject || '(No Subject)'}`,
 		...(attachmentCount > 0 ? [`Attachments: ${attachmentCount}`] : []),
+		...(detailUrl ? [`Detail: ${detailUrl}`] : []),
 		''
 	];
 	const header = headerLines.join('\n');
@@ -301,6 +311,20 @@ async function telegramRequest<T>(token: string, method: string, payload: Record
 function getEnvString(env: EnvLike, key: string): string {
 	const value = env[key];
 	return typeof value === 'string' ? value : '';
+}
+
+function getEmailDetailUrl(env: EnvLike, emailId: string): string | null {
+	const baseUrl = getEnvString(env, 'MAILNEST_URL') || getEnvString(env, 'PUBLIC_APP_URL');
+	if (!baseUrl) return null;
+
+	try {
+		const url = new URL(baseUrl);
+		url.searchParams.set('email', emailId);
+		return url.toString();
+	} catch {
+		console.warn('[MailNest] Telegram detail link skipped: MAILNEST_URL is not a valid URL');
+		return null;
+	}
 }
 
 function getChatTitle(chat: TelegramUpdateChat): string {
