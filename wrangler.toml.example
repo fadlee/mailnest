@@ -18,6 +18,10 @@ binding = "ASSETS"
 MAIL_DOMAIN = "example.com"
 INTERNAL_SECRET = "GENERATE_ME"
 
+# Telegram bot tokens are encrypted before being stored in D1.
+# Configure this as a Worker secret, not as a checked-in var:
+#   bunx wrangler secret put ENCRYPTION_KEY
+
 # D1 Database binding
 [[d1_databases]]
 binding = "DB"

@@ -211,6 +211,25 @@ Click **Forgot password?** on the login page > enter secret key + new password.
 - HTML emails are sanitized with DOMPurify to prevent XSS
 - The internal email endpoint is protected by a random secret
 
+## Telegram Forwarding
+
+MailNest can forward every incoming email to a Telegram chat after storing it in the inbox.
+
+1. Create a Telegram bot with `@BotFather`.
+2. Configure an encryption key as a Worker secret:
+
+   ```bash
+   bunx wrangler secret put ENCRYPTION_KEY
+   ```
+
+3. Deploy MailNest, then open Settings -> Telegram Forwarding.
+4. Enter the bot token and default chat ID.
+5. Send a test message from the Settings page.
+
+The bot token is encrypted before it is stored in the D1 `settings` table. The raw token is never returned to the browser.
+
+Telegram limits one message to about 4096 characters. MailNest forwards the full email body by splitting long emails across multiple Telegram messages.
+
 ---
 
 ## Re-deploy & Update
