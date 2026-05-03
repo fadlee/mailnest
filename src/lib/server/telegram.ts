@@ -19,7 +19,7 @@ export interface StoredEmailForTelegram {
 
 export interface TelegramConfig {
 	enabled: boolean;
-	includeDetailLink: boolean;
+	includeLinks: boolean;
 	configured: boolean;
 	botUsername: string | null;
 	botTokenPreview: string | null;
@@ -78,7 +78,7 @@ export async function loadTelegramConfig(db: Db): Promise<TelegramConfig> {
 	const settings = await loadTelegramSettings(db);
 	return {
 		enabled: settings.enabled,
-		includeDetailLink: settings.includeDetailLink,
+		includeLinks: settings.includeLinks,
 		configured: settings.configured,
 		botUsername: settings.botUsername,
 		botTokenPreview: settings.botTokenPreview,
@@ -93,7 +93,7 @@ async function loadTelegramSettings(db: Db): Promise<TelegramSettings> {
 
 	return {
 		enabled: settings.telegram_enabled === 'true',
-		includeDetailLink: settings.telegram_include_detail_link === 'true',
+		includeLinks: settings.telegram_include_detail_link === 'true',
 		configured: Boolean(encryptedToken && defaultChatId),
 		encryptedToken,
 		botUsername: settings.telegram_bot_username || null,
@@ -157,8 +157,9 @@ export async function forwardEmailToTelegram(params: {
 	try {
 		const encryptionKey = getEnvString(params.env, 'ENCRYPTION_KEY');
 		const token = await decryptSecret(settings.encryptedToken, encryptionKey);
-		const detailUrl = settings.includeDetailLink ? getEmailDetailUrl(params.env, params.email.id) : null;
-		const chunks = formatTelegramEmailMessages(params.email, params.attachmentCount, detailUrl);
+		const chunks = formatTelegramEmailMessages(params.email, params.attachmentCount, {
+			includeLinks: settings.includeLinks
+		});
 
 		for (const chunk of chunks) {
 			await sendTelegramMessage(token, settings.defaultChatId, chunk);
@@ -173,10 +174,10 @@ export async function forwardEmailToTelegram(params: {
 export function formatTelegramEmailMessages(
 	email: StoredEmailForTelegram,
 	attachmentCount: number,
-	detailUrl: string | null = null
+	options: { includeLinks?: boolean } = {}
 ): string[] {
 	const from = email.fromName ? `${email.fromName} <${email.fromAddress}>` : email.fromAddress;
-	const body = normalizeEmailBody(email.bodyText, email.bodyHtml);
+	const body = normalizeEmailBody(email.bodyText, email.bodyHtml, options);
 	const headerLines = [
 		`New email to ${email.toAddress}`,
 		'',
@@ -184,7 +185,6 @@ export function formatTelegramEmailMessages(
 		`To: ${email.toAddress}`,
 		`Subject: ${email.subject || '(No Subject)'}`,
 		...(attachmentCount > 0 ? [`Attachments: ${attachmentCount}`] : []),
-		...(detailUrl ? [`Detail: ${detailUrl}`] : []),
 		''
 	];
 	const header = headerLines.join('\n');
@@ -200,21 +200,27 @@ export function formatTelegramEmailMessages(
 	});
 }
 
-export function normalizeEmailBody(bodyText: string, bodyHtml: string | null): string {
-	const text = cleanExtractedText(bodyText);
+export function normalizeEmailBody(
+	bodyText: string,
+	bodyHtml: string | null,
+	options: { includeLinks?: boolean } = {}
+): string {
+	const includeLinks = options.includeLinks ?? true;
+	const text = cleanExtractedText(includeLinks ? bodyText : stripPlainTextUrls(bodyText));
 	if (text) return text;
 
 	const html = (bodyHtml || '').trim();
 	if (!html) return '(No text body)';
 
-	return htmlToReadableText(html) || '(No text body)';
+	return htmlToReadableText(html, includeLinks) || '(No text body)';
 }
 
-function htmlToReadableText(html: string): string {
+function htmlToReadableText(html: string, includeLinks: boolean): string {
 	const withLinks = html.replace(
 		/<a\b[^>]*href=["']?([^"'\s>]+)["']?[^>]*>([\s\S]*?)<\/a>/gi,
 		(_match, href: string, label: string) => {
 			const text = stripInlineHtml(label);
+			if (!includeLinks) return text;
 			const url = decodeHtmlEntities(href.trim());
 			if (!text) return url;
 			if (!url || text === url) return text;
@@ -237,6 +243,10 @@ function htmlToReadableText(html: string): string {
 		.replace(/<[^>]+>/g, '');
 
 	return cleanExtractedText(decodeHtmlEntities(stripped));
+}
+
+function stripPlainTextUrls(value: string): string {
+	return value.replace(/https?:\/\/\S+/gi, '').replace(/[ \t]{2,}/g, ' ');
 }
 
 function stripInlineHtml(value: string): string {
@@ -325,20 +335,6 @@ export function getTelegramMigratedChatId(data: unknown): string | null {
 function getEnvString(env: EnvLike, key: string): string {
 	const value = env[key];
 	return typeof value === 'string' ? value : '';
-}
-
-function getEmailDetailUrl(env: EnvLike, emailId: string): string | null {
-	const baseUrl = getEnvString(env, 'MAILNEST_URL') || getEnvString(env, 'PUBLIC_APP_URL');
-	if (!baseUrl) return null;
-
-	try {
-		const url = new URL(baseUrl);
-		url.searchParams.set('email', emailId);
-		return url.toString();
-	} catch {
-		console.warn('[MailNest] Telegram detail link skipped: MAILNEST_URL is not a valid URL');
-		return null;
-	}
 }
 
 function getChatTitle(chat: TelegramUpdateChat): string {

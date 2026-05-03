@@ -51,8 +51,20 @@ describe('normalizeEmailBody', () => {
 	test('keeps links readable with the href beside linked text', () => {
 		const html = '<p>Open <a href="https://example.com/reset?token=abc&amp;next=login">reset password</a>.</p>';
 
-		expect(normalizeEmailBody('', html)).toBe(
+		expect(normalizeEmailBody('', html, { includeLinks: true })).toBe(
 			'Open reset password (https://example.com/reset?token=abc&next=login).'
+		);
+	});
+
+	test('strips links from html-only email when links are disabled', () => {
+		const html = '<p>Open <a href="https://example.com/reset?token=abc&amp;next=login">reset password</a>.</p>';
+
+		expect(normalizeEmailBody('', html, { includeLinks: false })).toBe('Open reset password.');
+	});
+
+	test('strips plain text urls when links are disabled', () => {
+		expect(normalizeEmailBody('Open https://example.com/reset and continue', null, { includeLinks: false })).toBe(
+			'Open and continue'
 		);
 	});
 
@@ -81,11 +93,9 @@ describe('formatTelegramEmailMessages', () => {
 		expect(formatTelegramEmailMessages(email, 0)[0].startsWith('New email to team@example.com')).toBe(true);
 	});
 
-	test('includes detail link only when provided', () => {
+	test('does not include MailNest detail link', () => {
 		expect(formatTelegramEmailMessages(email, 0)[0]).not.toContain('Detail:');
-		expect(formatTelegramEmailMessages(email, 0, 'https://mail.example.com/?email=email-1')[0]).toContain(
-			'Detail: https://mail.example.com/?email=email-1'
-		);
+		expect(formatTelegramEmailMessages(email, 0, { includeLinks: true })[0]).not.toContain('Detail:');
 	});
 });
 
