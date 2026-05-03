@@ -41,6 +41,9 @@ interface TelegramApiResponse<T> {
 	ok: boolean;
 	result?: T;
 	description?: string;
+	parameters?: {
+		migrate_to_chat_id?: number | string;
+	};
 }
 
 interface TelegramUpdateChat {
@@ -302,10 +305,21 @@ async function telegramRequest<T>(token: string, method: string, payload: Record
 	const data = (await response.json().catch(() => null)) as TelegramApiResponse<T> | null;
 
 	if (!response.ok || !data?.ok) {
-		throw new Error(data?.description || `Telegram ${method} failed with HTTP ${response.status}`);
+		const migratedChatId = getTelegramMigratedChatId(data);
+		const description = data?.description || `Telegram ${method} failed with HTTP ${response.status}`;
+		throw new Error(
+			migratedChatId
+				? `${description}. Update Telegram chat ID to ${migratedChatId}.`
+				: description
+		);
 	}
 
 	return data.result as T;
+}
+
+export function getTelegramMigratedChatId(data: unknown): string | null {
+	const value = (data as TelegramApiResponse<unknown> | null)?.parameters?.migrate_to_chat_id;
+	return typeof value === 'number' || typeof value === 'string' ? String(value) : null;
 }
 
 function getEnvString(env: EnvLike, key: string): string {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { formatTelegramEmailMessages, normalizeEmailBody } from './telegram.js';
+import { formatTelegramEmailMessages, getTelegramMigratedChatId, normalizeEmailBody } from './telegram.js';
 
 const email = {
 	id: 'email-1',
@@ -86,5 +86,17 @@ describe('formatTelegramEmailMessages', () => {
 		expect(formatTelegramEmailMessages(email, 0, 'https://mail.example.com/?email=email-1')[0]).toContain(
 			'Detail: https://mail.example.com/?email=email-1'
 		);
+	});
+});
+
+describe('getTelegramMigratedChatId', () => {
+	test('reads new supergroup chat id from Telegram error parameters', () => {
+		expect(
+			getTelegramMigratedChatId({
+				ok: false,
+				description: 'Bad Request: group chat was upgraded to a supergroup chat',
+				parameters: { migrate_to_chat_id: -1001234567890 }
+			})
+		).toBe('-1001234567890');
 	});
 });
