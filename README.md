@@ -55,7 +55,7 @@ Everything deploys as a **single Cloudflare Worker**. No Docker, no VPS, no main
 | Search                        | Full-text search across all emails                |
 | Star, archive, trash          | Organize emails like you're used to               |
 | Email routing rules           | Forward, reject, or drop emails by pattern        |
-| Password protected            | Secure login with secret key for password reset   |
+| Password protected            | Secure login with admin username + password, plus secret-key reset |
 | Auto-refresh                  | New emails appear automatically (30s polling)     |
 | Attachment support            | View metadata, download via R2 (optional)         |
 | HTML email rendering          | Sanitized with DOMPurify (XSS-safe)               |
@@ -100,7 +100,7 @@ That's it. The script handles everything:
 [1/13]  Check dependencies (bun, curl)
 [2/13]  Install packages
 [3/13]  Set up wrangler.toml from template
-[4/13]  Prompt: domain, subdomain, secret key, admin password
+[4/13]  Prompt: domain, subdomain, admin username, secret key, admin password
 [5/13]  Authenticate with Cloudflare
 [6/13]  Create D1 database
 [7/13]  Update configuration
@@ -115,10 +115,11 @@ That's it. The script handles everything:
 After install:
 
 1. Open `https://mail.yourdomain.com`
-2. Log in with your admin password
-3. Go to **Settings** > **Email Addresses** > **Add Address**
-4. Enter a username (e.g. `hello`) -- becomes `hello@yourdomain.com`
-5. Send a test email to that address!
+2. Log in with your admin username and password
+3. Go to **Settings** > **Admin Credentials** to review or change the login username if needed
+4. Go to **Settings** > **Email Addresses** > **Add Address**
+5. Enter a username (e.g. `hello`) -- becomes `hello@yourdomain.com`
+6. Send a test email to that address!
 
 ---
 
@@ -190,13 +191,17 @@ Click the address at the bottom of the sidebar to switch. Select **All Inboxes**
 
 ### Login
 
-Use the admin password set during `./install.sh`.
+Use the admin username and password set during `./install.sh`.
+
+### Manage admin username
+
+Open **Settings** > **Admin Credentials** to update the login username stored in D1 under `settings.admin_username`.
 
 ### Forgot password?
 
 **Option A** -- Have your secret key:
 
-Click **Forgot password?** on the login page > enter secret key + new password.
+Click **Forgot password?** on the login page > enter secret key + admin username + new password.
 
 **Option B** -- Lost everything:
 
@@ -204,8 +209,11 @@ Click **Forgot password?** on the login page > enter secret key + new password.
 ./reset-password.sh
 ```
 
+The CLI reset script now asks for both a new admin username and a new admin password.
+
 ### How auth works
 
+- The admin username is stored in D1 as `settings.admin_username`
 - Passwords are SHA-256 hashed and stored in D1
 - Sessions are cookie-based with 7-day expiry
 - HTML emails are sanitized with DOMPurify to prevent XSS
@@ -290,15 +298,15 @@ R2 free tier: 10GB storage, 10M reads/month.
 # First time: set up local D1 database
 bun run dev:setup
 
-# Set or reset the local admin password
-bun run dev:password admin123
+# Set or reset the local admin credentials
+bun run dev:password admin admin123
 
 # Start dev server
 bun run dev
 ```
 
-Open `http://localhost:5173` and log in with the password you set above.
-Run `bun run dev:password` without an argument if you prefer to enter the password securely.
+Open `http://localhost:5173` and log in with the username and password you set above.
+Run `bun run dev:password` without arguments if you prefer to enter the credentials securely.
 
 ---
 
@@ -325,7 +333,7 @@ Run `bun run dev:password` without an argument if you prefer to enter the passwo
 mailnest/
 ├── install.sh                  # One-click installer
 ├── uninstall.sh                # Remove all resources
-├── reset-password.sh           # CLI password reset
+├── reset-password.sh           # CLI username/password reset
 ├── wrangler.toml.example       # Config template (wrangler.toml is gitignored)
 ├── scripts/
 │   └── postbuild-email-handler.mjs   # Injects email() into compiled Worker
@@ -343,8 +351,8 @@ mailnest/
 │   │       └── email/          # EmailList, EmailDetail, ContextMenu
 │   └── routes/
 │       ├── +page.svelte        # Dashboard
-│       ├── login/              # Login + password reset
-│       ├── settings/           # Email addresses, routing rules, theme
+│       ├── login/              # Login + username/password reset
+│       ├── settings/           # Admin username, email addresses, routing rules, theme
 │       └── api/                # REST API endpoints
 └── static/favicon.svg
 ```
@@ -355,8 +363,8 @@ mailnest/
 
 | Method         | Endpoint                                    | Description                 |
 | -------------- | ------------------------------------------- | --------------------------- |
-| `POST`         | `/api/auth`                                 | Login                       |
-| `PUT`          | `/api/auth`                                 | Reset password (secret key) |
+| `POST`         | `/api/auth`                                 | Login with username + password |
+| `PUT`          | `/api/auth`                                 | Reset username/password (secret key) |
 | `DELETE`       | `/api/auth`                                 | Logout                      |
 | `GET`          | `/api/auth`                                 | Check session               |
 | `GET`          | `/api/emails?folder=inbox&search=&address=` | List emails                 |

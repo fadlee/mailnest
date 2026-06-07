@@ -8,6 +8,7 @@ import {
 	clearSessionCookie,
 	getSessionCookie
 } from '$lib/server/auth.js';
+import { getSetting, setSetting } from '$lib/server/settings.js';
 import { eq, like } from 'drizzle-orm';
 
 // POST /api/auth - Login
@@ -17,28 +18,32 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
 	}
 
 	const db = createDb(platform.env.DB);
-	const body = (await request.json()) as { password: string };
+	const body = (await request.json()) as { username?: string; password?: string };
+	const username = body.username?.trim();
 
+	if (!username) {
+		error(400, 'Username is required');
+	}
 	if (!body.password) {
 		error(400, 'Password is required');
 	}
 
 	try {
-		// Check if admin password exists
-		const [existingPassword] = await db
-			.select()
-			.from(schema.settings)
-			.where(eq(schema.settings.key, 'admin_password_hash'))
-			.limit(1);
+		const [existingPassword, configuredUsername] = await Promise.all([
+			getSetting(db, 'admin_password_hash'),
+			getSetting(db, 'admin_username')
+		]);
 
 		if (!existingPassword) {
 			error(403, 'Admin password not configured. Please run install.sh first.');
 		}
+		if (!configuredUsername) {
+			error(403, 'Admin username not configured. Please run install.sh first.');
+		}
 
-		// Verify password
 		const passwordHash = await hashPassword(body.password);
-		if (passwordHash !== existingPassword.value) {
-			error(401, 'Invalid password');
+		if (username !== configuredUsername || passwordHash !== existingPassword) {
+			error(401, 'Invalid username or password');
 		}
 
 		// Create session
@@ -77,13 +82,18 @@ export const PUT: RequestHandler = async ({ request, cookies, platform }) => {
 
 	const db = createDb(platform.env.DB);
 	const body = (await request.json()) as {
-		secretKey: string;
-		password: string;
-		confirmPassword: string;
+		secretKey?: string;
+		username?: string;
+		password?: string;
+		confirmPassword?: string;
 	};
+	const username = body.username?.trim();
 
 	if (!body.secretKey) {
 		error(400, 'Secret key is required');
+	}
+	if (!username) {
+		error(400, 'Username is required');
 	}
 	if (!body.password) {
 		error(400, 'New password is required');
@@ -109,17 +119,19 @@ export const PUT: RequestHandler = async ({ request, cookies, platform }) => {
 			error(401, 'Invalid secret key');
 		}
 
-		// Update password
 		const passwordHash = await hashPassword(body.password);
 		const now = new Date().toISOString();
 
-		await db
-			.insert(schema.settings)
-			.values({ key: 'admin_password_hash', value: passwordHash, updatedAt: now })
-			.onConflictDoUpdate({
-				target: schema.settings.key,
-				set: { value: passwordHash, updatedAt: now }
-			});
+		await Promise.all([
+			setSetting(db, 'admin_username', username),
+			db
+				.insert(schema.settings)
+				.values({ key: 'admin_password_hash', value: passwordHash, updatedAt: now })
+				.onConflictDoUpdate({
+					target: schema.settings.key,
+					set: { value: passwordHash, updatedAt: now }
+				})
+		]);
 
 		// Clear all existing sessions
 		const sessions = await db

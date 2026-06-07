@@ -42,6 +42,21 @@ export interface TelegramChatOption {
 	username: string | null;
 }
 
+export interface AdminSettings {
+	username: string;
+}
+
+export async function fetchAdminSettings() {
+	return request<AdminSettings>('/settings/admin');
+}
+
+export async function saveAdminSettings(data: AdminSettings) {
+	return request<AdminSettings>('/settings/admin', {
+		method: 'POST',
+		body: JSON.stringify(data)
+	});
+}
+
 export async function fetchTelegramSettings() {
 	return request<TelegramSettings>('/settings/telegram');
 }

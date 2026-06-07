@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { Mail, Lock, Eye, EyeOff } from 'lucide-svelte';
+	import { Mail, Lock, Eye, EyeOff, User } from 'lucide-svelte';
 
+	let username = $state('');
 	let password = $state('');
 	let showPassword = $state(false);
 	let error = $state('');
@@ -24,6 +25,10 @@
 	});
 
 	async function handleSubmit() {
+		if (!username) {
+			error = 'Username is required';
+			return;
+		}
 		if (!password) {
 			error = 'Password is required';
 			return;
@@ -36,7 +41,7 @@
 			const res = await fetch('/api/auth', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ password })
+				body: JSON.stringify({ username, password })
 			});
 
 			if (res.ok) {
@@ -80,11 +85,26 @@
 			<div class="rounded-xl border border-border bg-card p-6 shadow-sm">
 				<h2 class="mb-1 text-lg font-semibold text-card-foreground">Welcome back</h2>
 				<p class="mb-6 text-sm text-muted-foreground">
-					Enter your password to access your inbox.
+					Enter your username and password to access your inbox.
 				</p>
 
 				<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
 					<div class="space-y-4">
+						<div>
+							<label for="username" class="mb-1.5 block text-sm font-medium text-foreground">
+								Username
+							</label>
+							<div class="relative">
+								<User class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+								<input
+									id="username"
+									type="text"
+									placeholder="Enter your username"
+									class="w-full rounded-lg border border-input bg-background py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+									bind:value={username}
+								/>
+							</div>
+						</div>
 						<div>
 							<label for="password" class="mb-1.5 block text-sm font-medium text-foreground">
 								Password

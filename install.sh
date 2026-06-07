@@ -143,8 +143,14 @@ if [[ "$REDEPLOY" == false ]]; then
     echo ""
     echo -e "  ${BOLD}Admin Credentials${NC}"
     echo -e "  The secret key is used to reset your password if forgotten."
-    echo -e "  The password is used to log in to the dashboard."
+    echo -e "  The username and password are used to log in to the dashboard."
     echo ""
+
+    read -rp "  Enter admin username: " ADMIN_USERNAME
+    if [[ -z "$ADMIN_USERNAME" ]]; then
+        print_err "Admin username is required."
+        exit 1
+    fi
 
     read -rp "  Enter a secret key (for password reset): " SETUP_SECRET
     if [[ -z "$SETUP_SECRET" ]]; then
@@ -291,9 +297,11 @@ else
     bunx wrangler d1 execute mailnest-db --remote --yes --command \
         "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('setup_secret_hash', '${SECRET_HASH}', datetime('now'))" 2>&1 | tail -1
     bunx wrangler d1 execute mailnest-db --remote --yes --command \
+        "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('admin_username', '${ADMIN_USERNAME}', datetime('now'))" 2>&1 | tail -1
+    bunx wrangler d1 execute mailnest-db --remote --yes --command \
         "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('admin_password_hash', '${PASSWORD_HASH}', datetime('now'))" 2>&1 | tail -1
 
-    print_ok "Secret key and admin password configured"
+    print_ok "Secret key, admin username, and admin password configured"
 fi
 
 # ============================================================
@@ -359,6 +367,7 @@ echo -e "    ${CYAN}*@${MAIL_DOMAIN}${NC} → mailnest worker"
 echo ""
 if [[ "$REDEPLOY" == false ]]; then
 echo -e "  ${BOLD}Login:${NC}"
+echo -e "    Username: ${CYAN}${ADMIN_USERNAME}${NC}"
 echo -e "    Use the admin password you just set to log in."
 echo ""
 fi

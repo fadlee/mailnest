@@ -15,7 +15,9 @@
 		AtSign,
 		UserPlus,
 		Crown,
-		Send
+		Send,
+		User,
+		KeyRound
 	} from 'lucide-svelte';
 	import { cn } from '$lib/utils/index.js';
 	import * as api from '$lib/api.js';
@@ -28,6 +30,13 @@
 	let showAddAddress = $state(false);
 	let addressError = $state('');
 	let newAddress = $state({ username: '', displayName: '', role: 'member' });
+
+	// --- Admin Credentials ---
+	let adminLoading = $state(false);
+	let adminSaving = $state(false);
+	let adminError = $state('');
+	let adminSuccess = $state('');
+	let adminForm = $state({ username: '' });
 
 	// --- Telegram Forwarding ---
 	let telegramLoading = $state(false);
@@ -65,7 +74,7 @@
 	});
 
 	onMount(async () => {
-		await Promise.all([loadAddresses(), loadRules(), loadTelegramSettings()]);
+		await Promise.all([loadAddresses(), loadRules(), loadTelegramSettings(), loadAdminSettings()]);
 	});
 
 	// --- Address functions ---
@@ -79,6 +88,40 @@
 			addresses = [];
 		} finally {
 			addressLoading = false;
+		}
+	}
+
+	async function loadAdminSettings() {
+		adminLoading = true;
+		adminError = '';
+		try {
+			const settings = await api.fetchAdminSettings();
+			adminForm.username = settings.username;
+		} catch (err) {
+			adminError = err instanceof Error ? err.message : 'Failed to load admin settings';
+		} finally {
+			adminLoading = false;
+		}
+	}
+
+	async function saveAdminSettings() {
+		if (!adminForm.username.trim()) {
+			adminError = 'Username is required';
+			adminSuccess = '';
+			return;
+		}
+
+		adminSaving = true;
+		adminError = '';
+		adminSuccess = '';
+		try {
+			const settings = await api.saveAdminSettings({ username: adminForm.username.trim() });
+			adminForm.username = settings.username;
+			adminSuccess = 'Admin username saved.';
+		} catch (err) {
+			adminError = err instanceof Error ? err.message : 'Failed to save admin settings';
+		} finally {
+			adminSaving = false;
 		}
 	}
 
@@ -257,6 +300,60 @@
 
 	<div class="flex-1 overflow-y-auto">
 		<div class="mx-auto max-w-3xl space-y-8 p-6">
+
+			<!-- ==================== ADMIN CREDENTIALS ==================== -->
+			<section>
+				<h2 class="mb-4 flex items-center gap-2 text-base font-semibold text-foreground">
+					<KeyRound class="h-5 w-5" />
+					Admin Credentials
+				</h2>
+				<div class="rounded-lg border border-border bg-card p-4">
+					{#if adminLoading}
+						<p class="text-sm text-muted-foreground">Loading admin settings...</p>
+					{:else}
+						<div>
+							<label for="admin-username" class="mb-1 block text-sm font-medium text-foreground">Admin Username</label>
+							<div class="relative">
+								<User class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+								<input
+									id="admin-username"
+									type="text"
+									placeholder="Enter admin username"
+									class="w-full rounded-md border border-input bg-background py-2 pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+									bind:value={adminForm.username}
+								/>
+							</div>
+							<p class="mt-2 text-xs text-muted-foreground">
+								This username is used on the login page and stored in the `settings` table as `admin_username`.
+							</p>
+						</div>
+
+						{#if adminError}
+							<p class="mt-3 text-sm text-destructive">{adminError}</p>
+						{/if}
+						{#if adminSuccess}
+							<p class="mt-3 text-sm text-green-600 dark:text-green-400">{adminSuccess}</p>
+						{/if}
+
+						<div class="mt-4 flex flex-wrap gap-2">
+							<button
+								class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+								disabled={adminSaving}
+								onclick={saveAdminSettings}
+							>
+								<Save class="h-4 w-4" />
+								{adminSaving ? 'Saving...' : 'Save Admin Username'}
+							</button>
+							<a
+								href="/login/reset"
+								class="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
+							>
+								Reset password & username
+							</a>
+						</div>
+					{/if}
+				</div>
+			</section>
 
 			<!-- ==================== EMAIL ADDRESSES ==================== -->
 			<section>

@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { Mail, Lock, Eye, EyeOff, KeyRound, ArrowLeft } from 'lucide-svelte';
+	import { Mail, Lock, Eye, EyeOff, KeyRound, ArrowLeft, User } from 'lucide-svelte';
 
 	let secretKey = $state('');
+	let username = $state('');
 	let password = $state('');
 	let confirmPassword = $state('');
 	let showPassword = $state(false);
@@ -14,6 +15,10 @@
 
 		if (!secretKey) {
 			error = 'Secret key is required';
+			return;
+		}
+		if (!username) {
+			error = 'Username is required';
 			return;
 		}
 		if (!password) {
@@ -31,7 +36,7 @@
 			const res = await fetch('/api/auth', {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ secretKey, password, confirmPassword })
+				body: JSON.stringify({ secretKey, username, password, confirmPassword })
 			});
 
 			if (res.ok) {
@@ -67,7 +72,7 @@
 		<div class="rounded-xl border border-border bg-card p-6 shadow-sm">
 			<h2 class="mb-1 text-lg font-semibold text-card-foreground">Reset Password</h2>
 			<p class="mb-6 text-sm text-muted-foreground">
-				Enter your secret key (from installation) and a new password.
+				Enter your secret key, admin username, and a new password.
 			</p>
 
 			<form onsubmit={(e) => { e.preventDefault(); handleReset(); }}>
@@ -85,6 +90,23 @@
 								placeholder="Enter the secret key from install"
 								class="w-full rounded-lg border border-input bg-background py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
 								bind:value={secretKey}
+							/>
+						</div>
+					</div>
+
+					<!-- Username -->
+					<div>
+						<label for="username" class="mb-1.5 block text-sm font-medium text-foreground">
+							Admin Username
+						</label>
+						<div class="relative">
+							<User class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+							<input
+								id="username"
+								type="text"
+								placeholder="Enter admin username"
+								class="w-full rounded-lg border border-input bg-background py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+								bind:value={username}
 							/>
 						</div>
 					</div>
