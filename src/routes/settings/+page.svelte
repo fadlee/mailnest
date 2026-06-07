@@ -34,9 +34,13 @@
 	// --- Admin Credentials ---
 	let adminLoading = $state(false);
 	let adminSaving = $state(false);
+	let adminPasswordSaving = $state(false);
 	let adminError = $state('');
 	let adminSuccess = $state('');
+	let adminPasswordError = $state('');
+	let adminPasswordSuccess = $state('');
 	let adminForm = $state({ username: '' });
+	let adminPasswordForm = $state({ currentPassword: '', newPassword: '', confirmPassword: '' });
 
 	// --- Telegram Forwarding ---
 	let telegramLoading = $state(false);
@@ -94,6 +98,7 @@
 	async function loadAdminSettings() {
 		adminLoading = true;
 		adminError = '';
+		adminPasswordError = '';
 		try {
 			const settings = await api.fetchAdminSettings();
 			adminForm.username = settings.username;
@@ -122,6 +127,41 @@
 			adminError = err instanceof Error ? err.message : 'Failed to save admin settings';
 		} finally {
 			adminSaving = false;
+		}
+	}
+
+	async function changeAdminPassword() {
+		if (!adminPasswordForm.currentPassword) {
+			adminPasswordError = 'Current password is required';
+			adminPasswordSuccess = '';
+			return;
+		}
+		if (!adminPasswordForm.newPassword) {
+			adminPasswordError = 'New password is required';
+			adminPasswordSuccess = '';
+			return;
+		}
+		if (adminPasswordForm.newPassword !== adminPasswordForm.confirmPassword) {
+			adminPasswordError = 'Passwords do not match';
+			adminPasswordSuccess = '';
+			return;
+		}
+
+		adminPasswordSaving = true;
+		adminPasswordError = '';
+		adminPasswordSuccess = '';
+		try {
+			await api.changeAdminPassword({
+				currentPassword: adminPasswordForm.currentPassword,
+				newPassword: adminPasswordForm.newPassword,
+				confirmPassword: adminPasswordForm.confirmPassword
+			});
+			adminPasswordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
+			adminPasswordSuccess = 'Admin password updated.';
+		} catch (err) {
+			adminPasswordError = err instanceof Error ? err.message : 'Failed to update admin password';
+		} finally {
+			adminPasswordSaving = false;
 		}
 	}
 
@@ -311,45 +351,95 @@
 					{#if adminLoading}
 						<p class="text-sm text-muted-foreground">Loading admin settings...</p>
 					{:else}
-						<div>
-							<label for="admin-username" class="mb-1 block text-sm font-medium text-foreground">Admin Username</label>
-							<div class="relative">
-								<User class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-								<input
-									id="admin-username"
-									type="text"
-									placeholder="Enter admin username"
-									class="w-full rounded-md border border-input bg-background py-2 pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-									bind:value={adminForm.username}
-								/>
+						<div class="grid gap-6 lg:grid-cols-2">
+							<div>
+								<label for="admin-username" class="mb-1 block text-sm font-medium text-foreground">Admin Username</label>
+								<div class="relative">
+									<User class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+									<input
+										id="admin-username"
+										type="text"
+										placeholder="Enter admin username"
+										class="w-full rounded-md border border-input bg-background py-2 pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+										bind:value={adminForm.username}
+									/>
+								</div>
+								<p class="mt-2 text-xs text-muted-foreground">
+									This username is used on the login page and stored in the `settings` table as `admin_username`.
+								</p>
+
+								{#if adminError}
+									<p class="mt-3 text-sm text-destructive">{adminError}</p>
+								{/if}
+								{#if adminSuccess}
+									<p class="mt-3 text-sm text-green-600 dark:text-green-400">{adminSuccess}</p>
+								{/if}
+
+								<div class="mt-4 flex flex-wrap gap-2">
+									<button
+										class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+										disabled={adminSaving}
+										onclick={saveAdminSettings}
+									>
+										<Save class="h-4 w-4" />
+										{adminSaving ? 'Saving...' : 'Save Admin Username'}
+									</button>
+								</div>
 							</div>
-							<p class="mt-2 text-xs text-muted-foreground">
-								This username is used on the login page and stored in the `settings` table as `admin_username`.
-							</p>
-						</div>
 
-						{#if adminError}
-							<p class="mt-3 text-sm text-destructive">{adminError}</p>
-						{/if}
-						{#if adminSuccess}
-							<p class="mt-3 text-sm text-green-600 dark:text-green-400">{adminSuccess}</p>
-						{/if}
+							<div>
+								<label for="current-password" class="mb-1 block text-sm font-medium text-foreground">Current Password</label>
+								<input
+									id="current-password"
+									type="password"
+									placeholder="Enter current password"
+									class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+									bind:value={adminPasswordForm.currentPassword}
+								/>
+								<label for="new-password" class="mb-1 mt-3 block text-sm font-medium text-foreground">New Password</label>
+								<input
+									id="new-password"
+									type="password"
+									placeholder="Enter new password"
+									class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+									bind:value={adminPasswordForm.newPassword}
+								/>
+								<label for="confirm-password" class="mb-1 mt-3 block text-sm font-medium text-foreground">Confirm New Password</label>
+								<input
+									id="confirm-password"
+									type="password"
+									placeholder="Confirm new password"
+									class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+									bind:value={adminPasswordForm.confirmPassword}
+								/>
+								<p class="mt-2 text-xs text-muted-foreground">
+									Use the reset page if you forgot the current password or also need to rotate the secret-key flow.
+								</p>
 
-						<div class="mt-4 flex flex-wrap gap-2">
-							<button
-								class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
-								disabled={adminSaving}
-								onclick={saveAdminSettings}
-							>
-								<Save class="h-4 w-4" />
-								{adminSaving ? 'Saving...' : 'Save Admin Username'}
-							</button>
-							<a
-								href="/login/reset"
-								class="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
-							>
-								Reset password & username
-							</a>
+								{#if adminPasswordError}
+									<p class="mt-3 text-sm text-destructive">{adminPasswordError}</p>
+								{/if}
+								{#if adminPasswordSuccess}
+									<p class="mt-3 text-sm text-green-600 dark:text-green-400">{adminPasswordSuccess}</p>
+								{/if}
+
+								<div class="mt-4 flex flex-wrap gap-2">
+									<button
+										class="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+										disabled={adminPasswordSaving}
+										onclick={changeAdminPassword}
+									>
+										<Save class="h-4 w-4" />
+										{adminPasswordSaving ? 'Updating...' : 'Change Password'}
+									</button>
+									<a
+										href="/login/reset"
+										class="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
+									>
+										Reset with secret key
+									</a>
+								</div>
+							</div>
 						</div>
 					{/if}
 				</div>

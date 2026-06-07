@@ -46,12 +46,25 @@ export interface AdminSettings {
 	username: string;
 }
 
+export interface AdminPasswordChangeInput {
+	currentPassword: string;
+	newPassword: string;
+	confirmPassword: string;
+}
+
 export async function fetchAdminSettings() {
 	return request<AdminSettings>('/settings/admin');
 }
 
 export async function saveAdminSettings(data: AdminSettings) {
 	return request<AdminSettings>('/settings/admin', {
+		method: 'POST',
+		body: JSON.stringify(data)
+	});
+}
+
+export async function changeAdminPassword(data: AdminPasswordChangeInput) {
+	return request<{ success: boolean }>('/settings/admin', {
 		method: 'POST',
 		body: JSON.stringify(data)
 	});
