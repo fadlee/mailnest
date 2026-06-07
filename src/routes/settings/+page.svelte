@@ -157,7 +157,7 @@
 				confirmPassword: adminPasswordForm.confirmPassword
 			});
 			adminPasswordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
-			adminPasswordSuccess = 'Admin password updated.';
+			adminPasswordSuccess = 'Admin password updated. All active sessions have been signed out.';
 		} catch (err) {
 			adminPasswordError = err instanceof Error ? err.message : 'Failed to update admin password';
 		} finally {
@@ -413,7 +413,7 @@
 									bind:value={adminPasswordForm.confirmPassword}
 								/>
 								<p class="mt-2 text-xs text-muted-foreground">
-									Use the reset page if you forgot the current password or also need to rotate the secret-key flow.
+									Changing the password signs out all active sessions. Use the reset page if you forgot the current password or also need to rotate the secret-key flow.
 								</p>
 
 								{#if adminPasswordError}

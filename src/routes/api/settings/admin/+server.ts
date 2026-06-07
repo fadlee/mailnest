@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types.js';
 import { createDb, schema } from '$lib/server/db/index.js';
 import { getSetting, setSetting } from '$lib/server/settings.js';
 import { hashPassword } from '$lib/server/auth.js';
+import { eq, like } from 'drizzle-orm';
 
 export const GET: RequestHandler = async ({ platform }) => {
 	if (!platform?.env?.DB) {
@@ -51,7 +52,17 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
 		const nextPasswordHash = await hashPassword(body.newPassword);
 		await setSetting(db, 'admin_password_hash', nextPasswordHash);
-		return json({ success: true });
+
+		const sessions = await db
+			.select({ key: schema.settings.key })
+			.from(schema.settings)
+			.where(like(schema.settings.key, 'session_%'));
+
+		for (const session of sessions) {
+			await db.delete(schema.settings).where(eq(schema.settings.key, session.key));
+		}
+
+		return json({ success: true, sessionsCleared: sessions.length });
 	}
 
 	if (!username) {
